@@ -1,0 +1,138 @@
+name: Execute Performance Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+    runners:
+        description: "Determine Runs On"
+        required: true
+        default: d87wfmjmrig2c01
+        type: choice
+        options:
+          - d87wfmjmrig2c01
+          - d87wfmjmrig1c01
+    environment:
+        description: "Select Client Size"
+        required: true
+        default: "36k"
+        type: choice
+        options:
+          - 36k
+          - 120k
+          - 240k
+          - 300k
+    scriptName:
+        description: "Select Test Workflow"
+        required: true
+        default: "Badging"
+        type: choice
+        options:
+          - 'Badging'
+          - 'CSO'
+          - 'WeeklyView'
+          - 'MonthlyView'
+          - 'SelfSchedule'
+          - 'TimeCardReview'
+
+jobs:
+  Runs_On_d87wfmjmrig2c01:
+    name: Runs on d87wfmjmrig2c01
+    if: ${{ inputs.runner == 'd87wfmjmrig2c01' }}
+    runs-on: ['Windows', 'devops-jmeter-large', 'self-hosted', 'symplrdev']
+    steps:
+      - name: Print out Controller Name
+        run: echo "Running on d87wfmjmrig2c01"
+
+  Runs_On_d87wfmjmrig1c01:
+    name: Runs on d87wfmjmrig1c01
+    if: ${{ inputs.runner == 'd87wfmjmrig1c01' }}
+    runs-on: ['Windows', 'devops-jmeter-small', 'self-hosted', 'symplrdev']
+    steps:
+      - name: Print out Controller Name
+        run: echo "Running on d87wfmjmrig1c01"
+    
+  print_date:
+    steps:
+      - name: Set Current Date as Environment Variable
+        run: echo "CURRENT_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+        
+  env:
+      # Base paths for each environment
+      36k: "C:\\PerformanceTesting\\Scripts\\36k_Scripts\\"
+      120k: "C:\\PerformanceTesting\\Scripts\\120k_Script\\"
+      240k: "C:\\PerformanceTesting\\Scripts\\240K_Scripts\\"
+      300k: "C:\\PerformanceTesting\\Scripts\\300K_Scripts\\"
+
+      # Load Generator (LG) IP combinations
+      LOAD_GENERATORS_4: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100"
+      LOAD_GENERATORS_7: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103"
+      LOAD_GENERATORS_8: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103,10.253.69.105"
+      LOAD_GENERATORS_10: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103,10.253.69.105,10.253.68.97,10.253.68.98"
+      LOAD_GENERATORS_12: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103,10.253.69.105,10.253.68.27,10.253.68.28,10.253.68.29,10.253.69.11"
+      LOAD_GENERATORS_16: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103,10.253.69.105,10.253.68.97,10.253.68.98,10.253.68.99,10.253.68.100,10.253.68.27,10.253.68.28,10.253.68.29,10.253.69.11"
+      LOAD_GENERATORS_18: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103,10.253.69.104,10.253.69.105,10.253.68.97,10.253.68.98,10.253.68.99,10.253.68.100,10.253.68.27,10.253.68.28,10.253.68.29,10.253.68.30,10.253.69.11"
+      LOAD_GENERATORS_19: "10.253.69.97,10.253.69.98,10.253.69.99,10.253.69.100,10.253.69.101,10.253.69.102,10.253.69.103,10.253.69.104,10.253.69.105,10.253.68.96,10.253.68.97,10.253.68.98,10.253.68.99,10.253.68.100,10.253.68.27,10.253.68.28,10.253.68.29,10.253.68.30,10.253.69.11"
+      
+steps:
+      - name: Run JMeter Load Test
+        shell: cmd
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          SCRIPT_NAME: ${{ github.event.inputs.scriptName }}
+        run: |
+          REM Define JMeter binary and properties paths
+          SET jmeterBin=C:\PerformanceTesting\Tool\apache-jmeter-5.4\apache-jmeter-5.4\apache-jmeter-5.4\bin
+          
+          REM Construct the Result path
+          SET jmeterResult=C:\PerformanceTesting\RawResults\
+
+          REM Determine the base path based on the environment input
+          IF "%ENVIRONMENT%"=="36k" SET basePath=%36k%
+          IF "%ENVIRONMENT%"=="120k" SET basePath=%120k%
+          IF "%ENVIRONMENT%"=="240k" SET basePath=%240k%
+          IF "%ENVIRONMENT%"=="300k" SET basePath=%300k%
+
+         
+          REM Construct the script path based on the selected script name
+          SET jmeterScript=%basePath%\%SCRIPT_NAME%.jmx
+          SET jmeterResultPath=%jmeterResult%\%ENVIRONMENT%\%SCRIPT_NAME%\%CURRENT_DATE%_non-GUI.jtl
+
+          REM Ensure the JMeter script exists
+          IF NOT EXIST "%jmeterScript%" (
+            ECHO JMeter script not found at %jmeterScript%
+            EXIT /B 1
+          )
+
+          REM Change to the JMeter binary directory
+          CD /D %jmeterBin%
+
+          REM Assigning Proper loadGenerators for 36k environment          
+          IF "%ENVIRONMENT%"=="36k" SET loadGenerators=%LOAD_GENERATORS_4%
+          
+          REM Assigning Proper loadGenerators for 120k environment
+          IF "%ENVIRONMENT%"=="120k" IF "%SCRIPT_NAME%"=="Badging" SET loadGenerators=%LOAD_GENERATORS_8%
+          IF "%ENVIRONMENT%"=="120k" IF "%SCRIPT_NAME%"=="CSO" SET loadGenerators=%LOAD_GENERATORS_8%
+          IF "%ENVIRONMENT%"=="120k" IF "%SCRIPT_NAME%"=="WeeklyView" SET loadGenerators=%LOAD_GENERATORS_7%
+          IF "%ENVIRONMENT%"=="120k" IF "%SCRIPT_NAME%"=="MonthlyView" SET loadGenerators=%LOAD_GENERATORS_7%
+          IF "%ENVIRONMENT%"=="120k" IF "%SCRIPT_NAME%"=="SelfSchedule" SET loadGenerators=%LOAD_GENERATORS_8%
+          IF "%ENVIRONMENT%"=="120k" IF "%SCRIPT_NAME%"=="TimeCardReview" SET loadGenerators=%LOAD_GENERATORS_7%
+          
+          
+          REM Assigning Proper loadGenerators for 240k environment
+          IF "%ENVIRONMENT%"=="240k" IF "%SCRIPT_NAME%"=="Badging" SET loadGenerators=%LOAD_GENERATORS_12%
+          IF "%ENVIRONMENT%"=="240k" IF "%SCRIPT_NAME%"=="CSO" SET loadGenerators=%LOAD_GENERATORS_8%
+          IF "%ENVIRONMENT%"=="240k" IF "%SCRIPT_NAME%"=="WeeklyView" SET loadGenerators=%LOAD_GENERATORS_8%
+          IF "%ENVIRONMENT%"=="240k" IF "%SCRIPT_NAME%"=="MonthlyView" SET loadGenerators=%LOAD_GENERATORS_12%
+          IF "%ENVIRONMENT%"=="240k" IF "%SCRIPT_NAME%"=="SelfSchedule" SET loadGenerators=%LOAD_GENERATORS_18%
+          IF "%ENVIRONMENT%"=="240k" IF "%SCRIPT_NAME%"=="TimeCardReview" SET loadGenerators=%LOAD_GENERATORS_8%
+          
+          REM Assigning Proper loadGenerators for 300k environment
+          IF "%ENVIRONMENT%"=="300k" IF "%SCRIPT_NAME%"=="Badging" SET loadGenerators=%LOAD_GENERATORS_19%
+          IF "%ENVIRONMENT%"=="300k" IF "%SCRIPT_NAME%"=="CSO" SET loadGenerators=%LOAD_GENERATORS_10%
+          IF "%ENVIRONMENT%"=="300k" IF "%SCRIPT_NAME%"=="WeeklyView" SET loadGenerators=%LOAD_GENERATORS_8%
+          IF "%ENVIRONMENT%"=="300k" IF "%SCRIPT_NAME%"=="MonthlyView" SET loadGenerators=%LOAD_GENERATORS_16%
+          IF "%ENVIRONMENT%"=="300k" IF "%SCRIPT_NAME%"=="SelfSchedule" SET loadGenerators=%LOAD_GENERATORS_19%
+          IF "%ENVIRONMENT%"=="300k" IF "%SCRIPT_NAME%"=="TimeCardReview" SET loadGenerators=%LOAD_GENERATORS_16%
+          
+          REM Run JMeter in non-GUI mode for distributed testing
+          jmeter -n -t "%jmeterScript%" -l "%jmeterResultPath%" -R "%loadGenerators%"
