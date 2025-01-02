@@ -1,0 +1,62 @@
+name: Execute Performance Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      runners:
+        description: "Determine Runs On"
+        required: true
+        default: JMeter_Large_2C01
+        type: choice
+        options:
+          - JMeter_Large_2C01
+          - JMeter_Small_1C01
+      environment:
+        description: "Select Client Size"
+        required: true
+        default: "36k"
+        type: choice
+        options:
+          - 36k
+          - 120k
+          - 240k
+          - 300k
+      scriptName:
+        description: "Select Test Workflow"
+        required: true
+        default: "Badging"
+        type: choice
+        options:
+          - Badging
+          - CSO
+          - WeeklyView
+          - MonthlyView
+          - SelfSchedule
+          - TimeCardReview
+
+jobs:
+  Runs_On_Large:
+    name: Runs on JMeter_Large_2C01
+    if: ${{ inputs.runners == 'JMeter_Large_2C01' }}
+    runs-on: ['Windows', 'devops-jmeter-large', 'self-hosted', 'symplrdev']
+    steps:
+      - name: Print out Controller Name
+        run: echo "Running on JMeter_Large_2C01"
+
+  Runs_On_Small:
+    name: Runs on JMeter_Small_1C01
+    if: ${{ inputs.runners == 'JMeter_Small_1C01' }}
+    runs-on: ['Windows', 'devops-jmeter-small', 'self-hosted', 'symplrdev']
+    steps:
+      - name: Print out Controller Name
+        run: echo "Running on JMeter_Small_1C01"
+
+  Run_Test:
+    name: Run Performance Test
+    steps:
+      - name: Run PowerShell Performance Test Script
+        shell: pwsh
+        run: |
+          Tests/Performance/JMeter/Script/Perf_Test_v1.ps1 `
+            -ENVIRONMENT "${{ github.event.inputs.environment }}" `
+            -SCRIPT_NAME "${{ github.event.inputs.scriptName }}"
